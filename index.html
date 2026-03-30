@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Аналітика фінансування шкіл</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ── TOKENS ── */
+:root,[data-theme="light"]{
+  --bg:#f7f6f2;--surface:#f9f8f5;--surface-2:#fbfbf9;
+  --surface-off:#f3f0ec;--surface-dyn:#e6e4df;
+  --divider:#dcd9d5;--border:#d4d1ca;
+  --text:#28251d;--muted:#7a7974;--faint:#bab9b4;--inv:#f9f8f4;
+  --primary:#01696f;--primary-h:#0c4e54;--primary-hl:#cedcd8;
+  --success:#437a22;--success-hl:#d4dfcc;
+  --warn:#964219;--warn-hl:#ddcfc6;
+  --err:#a13544;--err-hl:#dececb;
+  --blue:#006494;--gold:#d19900;--purple:#7a39bb;--orange:#da7101;
+  --shadow-sm:0 1px 2px oklch(0.2 0.01 80/.06);
+  --shadow-md:0 4px 12px oklch(0.2 0.01 80/.08);
+  --shadow-lg:0 12px 32px oklch(0.2 0.01 80/.12);
+  --r-sm:.375rem;--r-md:.5rem;--r-lg:.75rem;--r-xl:1rem;--r-full:9999px;
+  --tr:180ms cubic-bezier(.16,1,.3,1);
+  --font:'Inter','Helvetica Neue',sans-serif;
+  --c1:#01696f;--c2:#006494;--c3:#da7101;
+}
+[data-theme="dark"]{
+  --bg:#171614;--surface:#1c1b19;--surface-2:#201f1d;
+  --surface-off:#1d1c1a;--surface-dyn:#2d2c2a;
+  --divider:#262523;--border:#393836;
+  --text:#cdccca;--muted:#797876;--faint:#5a5957;--inv:#2b2a28;
+  --primary:#4f98a3;--primary-h:#227f8b;--primary-hl:#313b3b;
+  --success:#6daa45;--success-hl:#3a4435;
+  --warn:#bb653b;--warn-hl:#564942;
+  --err:#dd6974;--err-hl:#574848;
+  --blue:#5591c7;--gold:#e8af34;--purple:#a86fdf;--orange:#fdab43;
+  --shadow-sm:0 1px 2px oklch(0 0 0/.2);
+  --shadow-md:0 4px 12px oklch(0 0 0/.3);
+  --shadow-lg:0 12px 32px oklch(0 0 0/.4);
+  --c1:#4f98a3;--c2:#5591c7;--c3:#fdab43;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){
+  --bg:#171614;--surface:#1c1b19;--surface-2:#201f1d;
+  --surface-off:#1d1c1a;--surface-dyn:#2d2c2a;
+  --divider:#262523;--border:#393836;
+  --text:#cdccca;--muted:#797876;--faint:#5a5957;--inv:#2b2a28;
+  --primary:#4f98a3;--primary-h:#227f8b;--primary-hl:#313b3b;
+  --success:#6daa45;--success-hl:#3a4435;
+  --warn:#bb653b;--warn-hl:#564942;
+  --err:#dd6974;--err-hl:#574848;
+  --blue:#5591c7;--gold:#e8af34;--purple:#a86fdf;--orange:#fdab43;
+  --shadow-sm:0 1px 2px oklch(0 0 0/.2);
+  --shadow-md:0 4px 12px oklch(0 0 0/.3);
+  --shadow-lg:0 12px 32px oklch(0 0 0/.4);
+  --c1:#4f98a3;--c2:#5591c7;--c3:#fdab43;
+}}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{min-height:100dvh;font-family:var(--font);font-size:clamp(1rem,.95rem + .25vw,1.125rem);
+  color:var(--text);background:var(--bg);line-height:1.6}
+button{cursor:pointer;background:none;border:none;font:inherit;color:inherit}
+table{border-collapse:collapse;width:100%}
+canvas{display:block}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-rows:auto 1fr;min-height:100dvh}
+header{
+  position:sticky;top:0;z-index:100;
+  background:var(--surface);
+  border-bottom:1px solid var(--divider);
+  box-shadow:var(--shadow-sm);
+  padding:.75rem 1.5rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+}
+.logo{display:flex;align-items:center;gap:.75rem}
+.logo-icon{flex-shrink:0}
+.logo-text h1{font-size:clamp(.875rem,.8rem + .35vw,1rem);font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.logo-text p{font-size:.75rem;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+
+/* ── FILTER PILLS ── */
+.school-filters{display:flex;gap:.5rem;flex-wrap:wrap}
+.pill{
+  padding:.3rem .85rem;border-radius:var(--r-full);font-size:.75rem;font-weight:500;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--muted);
+  transition:all var(--tr);cursor:pointer;
+}
+.pill:hover{border-color:var(--primary);color:var(--primary)}
+.pill.active{background:var(--primary);border-color:var(--primary);color:#fff}
+[data-theme="light"] .pill.active{color:#fff}
+
+/* ── THEME TOGGLE ── */
+.theme-btn{
+  width:36px;height:36px;border-radius:var(--r-full);
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--border);background:var(--surface-2);
+  color:var(--muted);transition:all var(--tr);
+}
+.theme-btn:hover{color:var(--primary);border-color:var(--primary)}
+
+/* ── MAIN ── */
+main{padding:1.5rem;max-width:1400px;margin-inline:auto;width:100%}
+
+/* ── KPI STRIP ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(200px,100%),1fr));gap:1rem;margin-bottom:1.5rem}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--divider);
+  border-radius:var(--r-lg);padding:1.1rem 1.25rem;
+  box-shadow:var(--shadow-sm);transition:box-shadow var(--tr);
+}
+.kpi-card:hover{box-shadow:var(--shadow-md)}
+.kpi-label{font-size:.75rem;color:var(--muted);font-weight:500;margin-bottom:.35rem;line-height:1.3}
+.kpi-value{font-size:clamp(1.25rem,1rem + .75vw,1.75rem);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi-sub{font-size:.75rem;color:var(--faint);margin-top:.25rem}
+.kpi-badge{display:inline-flex;align-items:center;gap:.25rem;font-size:.7rem;font-weight:600;
+  padding:.15rem .5rem;border-radius:var(--r-full);margin-top:.4rem}
+.badge-good{background:var(--success-hl);color:var(--success)}
+.badge-warn{background:var(--warn-hl);color:var(--warn)}
+.badge-bad{background:var(--err-hl);color:var(--err)}
+
+/* ── CHARTS GRID ── */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(420px,100%),1fr));gap:1.25rem;margin-bottom:1.5rem}
+.chart-card{
+  background:var(--surface);border:1px solid var(--divider);
+  border-radius:var(--r-lg);padding:1.25rem;
+  box-shadow:var(--shadow-sm);transition:box-shadow var(--tr);
+}
+.chart-card:hover{box-shadow:var(--shadow-md)}
+.chart-card.full{grid-column:1/-1}
+.chart-title{font-size:.8125rem;font-weight:600;color:var(--text);margin-bottom:1rem;
+  display:flex;align-items:center;gap:.5rem}
+.chart-title span.badge{font-size:.65rem;font-weight:500;padding:.1rem .45rem;
+  border-radius:var(--r-full);background:var(--primary-hl);color:var(--primary)}
+.chart-wrap{position:relative}
+.chart-wrap canvas{max-height:280px}
+
+/* ── TABLE ── */
+.table-card{
+  background:var(--surface);border:1px solid var(--divider);
+  border-radius:var(--r-lg);padding:1.25rem;box-shadow:var(--shadow-sm);
+  margin-bottom:1.5rem;overflow-x:auto;
+}
+.table-title{font-size:.8125rem;font-weight:600;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+.data-table th{
+  font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--muted);padding:.6rem .85rem;text-align:left;
+  border-bottom:1px solid var(--divider);white-space:nowrap;
+}
+.data-table td{
+  font-size:.8125rem;padding:.65rem .85rem;
+  border-bottom:1px solid var(--divider);font-variant-numeric:tabular-nums;
+}
+.data-table tbody tr:last-child td{border-bottom:none}
+.data-table tbody tr:hover td{background:var(--surface-off)}
+.school-name-cell{font-weight:600;color:var(--text)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:.5rem;flex-shrink:0}
+.school-cell{display:flex;align-items:center}
+
+/* ── PROFILES ── */
+.profiles-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:1.25rem;margin-bottom:1.5rem}
+.profile-card{
+  background:var(--surface);border:1px solid var(--divider);
+  border-radius:var(--r-lg);padding:1.25rem;box-shadow:var(--shadow-sm);
+}
+.profile-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--divider)}
+.profile-icon{width:40px;height:40px;border-radius:var(--r-md);
+  display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0}
+.profile-name{font-weight:700;font-size:.9375rem;line-height:1.2}
+.profile-type{font-size:.75rem;color:var(--muted)}
+.profile-metrics{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+.metric-item{padding:.5rem .65rem;background:var(--surface-off);border-radius:var(--r-md)}
+.metric-label{font-size:.7rem;color:var(--muted);margin-bottom:.2rem}
+.metric-val{font-size:.875rem;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ── PROGRESS BAR ── */
+.prog-wrap{margin-top:.5rem}
+.prog-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem}
+.prog-name{font-size:.75rem;color:var(--muted);min-width:110px;flex-shrink:0}
+.prog-bar-bg{flex:1;height:7px;background:var(--surface-dyn);border-radius:var(--r-full);overflow:hidden}
+.prog-bar{height:100%;border-radius:var(--r-full);transition:width .6s cubic-bezier(.16,1,.3,1)}
+.prog-val{font-size:.7rem;font-variant-numeric:tabular-nums;min-width:48px;text-align:right;color:var(--muted)}
+
+/* ── FOOTER ── */
+footer{text-align:center;padding:1.5rem;font-size:.75rem;color:var(--faint);border-top:1px solid var(--divider)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  header{padding:.65rem 1rem;flex-wrap:wrap}
+  main{padding:1rem}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .data-table td,.data-table th{padding:.5rem .6rem}
+}
+</style>
+</head>
+<body>
+<a href="#main" class="sr-only" style="position:absolute;left:-9999px">Перейти до змісту</a>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <svg class="logo-icon" aria-label="Логотип" width="36" height="36" viewBox="0 0 36 36" fill="none">
+      <rect width="36" height="36" rx="8" fill="var(--primary)"/>
+      <path d="M8 26V14l10-6 10 6v12H8Z" stroke="#fff" stroke-width="1.8" fill="none" stroke-linejoin="round"/>
+      <rect x="14" y="19" width="8" height="7" rx="1" stroke="#fff" stroke-width="1.5" fill="none"/>
+      <path d="M13 14h10" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <div class="logo-text">
+      <h1>Аналітика шкіл</h1>
+      <p>Фінансові показники 2024–2025</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <nav class="school-filters" aria-label="Фільтр шкіл">
+      <button class="pill active" data-school="all">Усі школи</button>
+      <button class="pill" data-school="0">Ліцей «Прогрес»</button>
+      <button class="pill" data-school="1">Гімназія «Надія»</button>
+      <button class="pill" data-school="2">ЗОШ № 47</button>
+    </nav>
+    <button class="theme-btn" data-theme-toggle aria-label="Перемкнути тему">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main id="main">
+
+  <!-- KPI ROW -->
+  <section class="kpi-grid" id="kpi-section" aria-label="Ключові показники"></section>
+
+  <!-- CHARTS ROW 1 -->
+  <section class="charts-grid" aria-label="Графіки">
+
+    <!-- Chart 1: Total funding bar -->
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="8" width="7" height="13"/></svg>
+        Загальне фінансування
+        <span class="badge">млн грн</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-total"></canvas></div>
+    </div>
+
+    <!-- Chart 2: Per student -->
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        Фінансування на 1 учня
+        <span class="badge">тис. грн</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-per-student"></canvas></div>
+    </div>
+
+    <!-- Chart 3: Budget structure stacked -->
+    <div class="chart-card full">
+      <div class="chart-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        Структура витрат — зарплата / комуналка / ремонт / розвиток
+        <span class="badge">%</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-structure" style="max-height:240px"></canvas></div>
+    </div>
+
+    <!-- Chart 4: Funding sources donut (per school or combined) -->
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l6 3"/></svg>
+        Держ./місцеве vs альтернативні джерела
+      </div>
+      <div class="chart-wrap" style="display:flex;justify-content:center"><canvas id="chart-sources" style="max-height:260px;max-width:300px"></canvas></div>
+    </div>
+
+    <!-- Chart 5: Coverage grouped bar -->
+    <div class="chart-card">
+      <div class="chart-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Охоплення молоді
+        <span class="badge">%</span>
+      </div>
+      <div class="chart-wrap"><canvas id="chart-coverage"></canvas></div>
+    </div>
+
+  </section>
+
+  <!-- DATA TABLE -->
+  <section class="table-card" aria-label="Зведена таблиця">
+    <div class="table-title">
+      <span>Зведена таблиця показників</span>
+      <button id="export-btn" style="font-size:.75rem;padding:.35rem .85rem;border-radius:var(--r-full);
+        border:1px solid var(--border);color:var(--muted);background:var(--surface-2);
+        transition:all var(--tr)" aria-label="Експортувати CSV">
+        ↓ Експорт CSV
+      </button>
+    </div>
+    <table class="data-table" id="data-table">
+      <thead>
+        <tr>
+          <th>Школа</th>
+          <th>Фінансування</th>
+          <th>На учня</th>
+          <th>Зарплата</th>
+          <th>Розвиток</th>
+          <th>Держ. частка</th>
+          <th>Охоплення</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </section>
+
+  <!-- SCHOOL PROFILES -->
+  <section class="profiles-grid" id="profiles-section" aria-label="Профілі шкіл"></section>
+
+</main>
+<footer>Навчальний рік 2024–2025 · Умовні дані для демонстрації</footer>
+</div>
+
+<script>
+// ── DATA ──
+const SCHOOLS = [
+  {
+    name:"Ліцей «Прогрес»",
+    short:"Прогрес",
+    type:"Ліцей",
+    color:"var(--c1)",
+    hex:"#01696f",
+    students:620,
+    youth:2200,
+    totalFunding:15.4,
+    perStudent:24.8,
+    structure:{salary:58,utility:18,repair:12,develop:12},
+    govShare:72,
+    altShare:28,
+  },
+  {
+    name:"Гімназія «Надія»",
+    short:"Надія",
+    type:"Гімназія",
+    color:"var(--c2)",
+    hex:"#006494",
+    students:480,
+    youth:1450,
+    totalFunding:10.4,
+    perStudent:21.7,
+    structure:{salary:62,utility:20,repair:13,develop:5},
+    govShare:85,
+    altShare:15,
+  },
+  {
+    name:"ЗОШ № 47",
+    short:"ЗОШ 47",
+    type:"Загальноосвітня",
+    color:"var(--c3)",
+    hex:"#da7101",
+    students:310,
+    youth:640,
+    totalFunding:5.4,
+    perStudent:17.4,
+    structure:{salary:65,utility:21,repair:12,develop:2},
+    govShare:94,
+    altShare:6,
+  }
+];
+
+const STRUCT_LABELS=["Зарплата","Комунальні послуги","Ремонт","Розвиток"];
+const STRUCT_COLORS_LIGHT=["#01696f","#006494","#d19900","#a86fdf"];
+const STRUCT_COLORS_DARK= ["#4f98a3","#5591c7","#e8af34","#a86fdf"];
+
+let activeSchool="all";
+let charts={};
+
+// ── THEME ──
+(function(){
+  const btn=document.querySelector("[data-theme-toggle]"),h=document.documentElement;
+  let d=matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";
+  h.setAttribute("data-theme",d);
+  updateThemeIcon(btn,d);
+  btn.addEventListener("click",()=>{
+    d=d==="dark"?"light":"dark";
+    h.setAttribute("data-theme",d);
+    updateThemeIcon(btn,d);
+    rebuildCharts();
+  });
+})();
+function updateThemeIcon(btn,d){
+  btn.innerHTML=d==="dark"
+    ?'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+    :'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+}
+function isDark(){return document.documentElement.getAttribute("data-theme")==="dark";}
+function getStructColors(){return isDark()?STRUCT_COLORS_DARK:STRUCT_COLORS_LIGHT;}
+function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+// ── FILTER ──
+document.querySelectorAll(".pill").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".pill").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    activeSchool=btn.dataset.school;
+    renderAll();
+  });
+});
+
+// ── HELPERS ──
+function filteredSchools(){
+  return activeSchool==="all"?SCHOOLS:[SCHOOLS[+activeSchool]];
+}
+function statusBadge(s){
+  const d=s.structure.develop;
+  if(d>=10)return{cls:"badge-good",txt:"✓ Норма"};
+  if(d>=5) return{cls:"badge-warn",txt:"! Обмежено"};
+  return{cls:"badge-bad",txt:"✗ Критично"};
+}
+
+// ── KPI ──
+function renderKPI(){
+  const fs=filteredSchools();
+  const totalF=fs.reduce((a,s)=>a+s.totalFunding,0);
+  const avgPer=fs.reduce((a,s)=>a+s.perStudent,0)/fs.length;
+  const avgGov=fs.reduce((a,s)=>a+s.govShare,0)/fs.length;
+  const avgCov=fs.reduce((a,s)=>a+(s.students/s.youth*100),0)/fs.length;
+  const avgDev=fs.reduce((a,s)=>a+s.structure.develop,0)/fs.length;
+  const totalStudents=fs.reduce((a,s)=>a+s.students,0);
+
+  const kpis=[
+    {label:"Загальне фінансування",val:totalF.toFixed(1)+" млн грн",sub:"бюджет навч. року"},
+    {label:"Фінансування на учня",val:avgPer.toFixed(1)+" тис. грн",sub:"середнє по вибірці"},
+    {label:"Держ. частка (сер.)",val:avgGov.toFixed(0)+"%",sub:"держ. + місц. бюджет"},
+    {label:"Охоплення молоді (сер.)",val:avgCov.toFixed(1)+"%",sub:"учні / молодь у районі"},
+    {label:"Витрати на розвиток",val:avgDev.toFixed(1)+"%",sub:"від заг. фінансування"},
+    {label:"Кількість учнів",val:totalStudents.toLocaleString("uk"),sub:"усього у вибірці"},
+  ];
+  const sec=document.getElementById("kpi-section");
+  sec.innerHTML=kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.val}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join("");
+}
+
+// ── CHARTS ──
+const chartOpts=(dark)=>({
+  color:dark?"#797876":"#7a7974",
+  gridColor:dark?"rgba(255,255,255,0.06)":"rgba(0,0,0,0.07)",
+  tickColor:dark?"#5a5957":"#bab9b4",
+});
+
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function renderChartTotal(){
+  destroyChart("total");
+  const fs=filteredSchools();
+  const dark=isDark();
+  const opts=chartOpts(dark);
+  const ctx=document.getElementById("chart-total");
+  charts["total"]=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:fs.map(s=>s.short),
+      datasets:[{
+        label:"млн грн",
+        data:fs.map(s=>s.totalFunding),
+        backgroundColor:fs.map(s=>s.hex+"cc"),
+        borderColor:fs.map(s=>s.hex),
+        borderWidth:1.5,borderRadius:6,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+c.raw+" млн грн"}}},
+      scales:{
+        x:{ticks:{color:opts.tickColor,font:{size:12}},grid:{display:false}},
+        y:{ticks:{color:opts.tickColor,font:{size:11}},
+           grid:{color:opts.gridColor},
+           beginAtZero:true,
+           title:{display:true,text:"млн грн",color:opts.color,font:{size:11}}}
+      }
+    }
+  });
+}
+
+function renderChartPerStudent(){
+  destroyChart("perstudent");
+  const fs=filteredSchools();
+  const dark=isDark();
+  const opts=chartOpts(dark);
+  const ctx=document.getElementById("chart-per-student");
+  charts["perstudent"]=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:fs.map(s=>s.short),
+      datasets:[{
+        label:"тис. грн",
+        data:fs.map(s=>s.perStudent),
+        backgroundColor:fs.map(s=>s.hex+"cc"),
+        borderColor:fs.map(s=>s.hex),
+        borderWidth:1.5,borderRadius:6,
+        indexAxis:"y",
+      }]
+    },
+    options:{
+      indexAxis:"y",
+      responsive:true,maintainAspectRatio:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+c.raw+" тис. грн"}}},
+      scales:{
+        x:{ticks:{color:opts.tickColor,font:{size:11}},grid:{color:opts.gridColor},
+           title:{display:true,text:"тис. грн",color:opts.color,font:{size:11}}},
+        y:{ticks:{color:opts.tickColor,font:{size:12}},grid:{display:false}}
+      }
+    }
+  });
+}
+
+function renderChartStructure(){
+  destroyChart("structure");
+  const fs=filteredSchools();
+  const dark=isDark();
+  const opts=chartOpts(dark);
+  const sc=getStructColors();
+  const ctx=document.getElementById("chart-structure");
+  charts["structure"]=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:fs.map(s=>s.short),
+      datasets:STRUCT_LABELS.map((lbl,i)=>({
+        label:lbl,
+        data:fs.map(s=>[s.structure.salary,s.structure.utility,s.structure.repair,s.structure.develop][i]),
+        backgroundColor:sc[i]+"cc",borderColor:sc[i],borderWidth:1,
+        stack:"s",borderRadius:{topLeft:i===3?4:0,topRight:i===3?4:0,bottomLeft:i===0?4:0,bottomRight:i===0?4:0}
+      }))
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{
+        legend:{position:"bottom",labels:{color:opts.color,font:{size:11},padding:12,boxWidth:12}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${c.raw}%`}}
+      },
+      scales:{
+        x:{ticks:{color:opts.tickColor,font:{size:12}},grid:{display:false},stacked:true},
+        y:{ticks:{color:opts.tickColor,font:{size:11},callback:v=>v+"%"},
+           grid:{color:opts.gridColor},stacked:true,max:100,
+           title:{display:true,text:"%",color:opts.color,font:{size:11}}}
+      }
+    }
+  });
+}
+
+function renderChartSources(){
+  destroyChart("sources");
+  const fs=filteredSchools();
+  const dark=isDark();
+  const opts=chartOpts(dark);
+  const ctx=document.getElementById("chart-sources");
+  // aggregate
+  const gov=fs.reduce((a,s)=>a+s.govShare,0)/fs.length;
+  const alt=100-gov;
+  const primColor=dark?"#4f98a3":"#01696f";
+  const altColor=dark?"#fdab43":"#da7101";
+  charts["sources"]=new Chart(ctx,{
+    type:"doughnut",
+    data:{
+      labels:["Держ./місц. бюджет","Альтернативні джерела"],
+      datasets:[{
+        data:[gov.toFixed(1),alt.toFixed(1)],
+        backgroundColor:[primColor+"cc",altColor+"cc"],
+        borderColor:[primColor,altColor],
+        borderWidth:1.5,hoverOffset:8,
+      }]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{
+        legend:{position:"bottom",labels:{color:opts.color,font:{size:11},padding:14,boxWidth:12}},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${c.raw}%`}}
+      },
+      cutout:"62%"
+    }
+  });
+}
+
+function renderChartCoverage(){
+  destroyChart("coverage");
+  const fs=filteredSchools();
+  const dark=isDark();
+  const opts=chartOpts(dark);
+  const ctx=document.getElementById("chart-coverage");
+  const primColor=dark?"#4f98a3":"#01696f";
+  const primColorFade=dark?"#4f98a355":"#01696f44";
+  charts["coverage"]=new Chart(ctx,{
+    type:"bar",
+    data:{
+      labels:fs.map(s=>s.short),
+      datasets:[
+        {label:"Учні",data:fs.map(s=>s.students),backgroundColor:primColor+"cc",borderColor:primColor,borderWidth:1.5,borderRadius:5},
+        {label:"Молодь у районі",data:fs.map(s=>s.youth),backgroundColor:primColorFade,borderColor:primColor+"88",borderWidth:1,borderRadius:5,borderDash:[4,3]},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:true,
+      plugins:{
+        legend:{position:"bottom",labels:{color:opts.color,font:{size:11},padding:12,boxWidth:12}},
+        tooltip:{callbacks:{
+          afterBody:(items)=>{
+            if(!items.length)return[];
+            const idx=items[0].dataIndex;
+            const s=fs[idx];
+            return["Охоплення: "+(s.students/s.youth*100).toFixed(1)+"%"];
+          }
+        }}
+      },
+      scales:{
+        x:{ticks:{color:opts.tickColor,font:{size:12}},grid:{display:false}},
+        y:{ticks:{color:opts.tickColor,font:{size:11}},grid:{color:opts.gridColor},beginAtZero:true}
+      }
+    }
+  });
+}
+
+// ── TABLE ──
+function renderTable(){
+  const fs=filteredSchools();
+  const tbody=document.getElementById("table-body");
+  tbody.innerHTML=fs.map(s=>{
+    const cov=(s.students/s.youth*100).toFixed(1);
+    const b=statusBadge(s);
+    return`<tr>
+      <td><div class="school-cell"><span class="dot" style="background:${s.hex}"></span><span class="school-name-cell">${s.name}</span></div></td>
+      <td>${s.totalFunding} млн грн</td>
+      <td>${s.perStudent} тис. грн</td>
+      <td>${s.structure.salary}%</td>
+      <td>${s.structure.develop}%</td>
+      <td>${s.govShare}%</td>
+      <td>${cov}%</td>
+      <td><span class="kpi-badge ${b.cls}">${b.txt}</span></td>
+    </tr>`;
+  }).join("");
+}
+
+// ── PROFILES ──
+function renderProfiles(){
+  const fs=filteredSchools();
+  const sec=document.getElementById("profiles-section");
+  sec.innerHTML=fs.map(s=>{
+    const cov=(s.students/s.youth*100).toFixed(1);
+    const b=statusBadge(s);
+    const progBars=[
+      {name:"Зарплата",val:s.structure.salary,max:100,color:s.hex},
+      {name:"Комунальні",val:s.structure.utility,max:100,color:s.hex+"bb"},
+      {name:"Ремонт",val:s.structure.repair,max:100,color:s.hex+"88"},
+      {name:"Розвиток",val:s.structure.develop,max:100,color:s.hex+"66"},
+    ].map(p=>`<div class="prog-row">
+      <span class="prog-name">${p.name}</span>
+      <div class="prog-bar-bg"><div class="prog-bar" style="width:${p.val}%;background:${p.color}"></div></div>
+      <span class="prog-val">${p.val}%</span>
+    </div>`).join("");
+    return`<article class="profile-card">
+      <div class="profile-header">
+        <div class="profile-icon" style="background:${s.hex}22;color:${s.hex}">${s.short[0]}</div>
+        <div>
+          <div class="profile-name">${s.name}</div>
+          <div class="profile-type">${s.type}</div>
+        </div>
+        <span class="kpi-badge ${b.cls}" style="margin-left:auto">${b.txt}</span>
+      </div>
+      <div class="profile-metrics">
+        <div class="metric-item"><div class="metric-label">Фінансування</div><div class="metric-val">${s.totalFunding} млн грн</div></div>
+        <div class="metric-item"><div class="metric-label">На учня</div><div class="metric-val">${s.perStudent} тис. грн</div></div>
+        <div class="metric-item"><div class="metric-label">Учні / молодь</div><div class="metric-val">${s.students} / ${s.youth}</div></div>
+        <div class="metric-item"><div class="metric-label">Охоплення</div><div class="metric-val">${cov}%</div></div>
+        <div class="metric-item"><div class="metric-label">Держ. частка</div><div class="metric-val">${s.govShare}%</div></div>
+        <div class="metric-item"><div class="metric-label">Альтернативне</div><div class="metric-val">${s.altShare}%</div></div>
+      </div>
+      <div class="prog-wrap" style="margin-top:1rem">${progBars}</div>
+    </article>`;
+  }).join("");
+}
+
+// ── RENDER ALL ──
+function renderAll(){
+  renderKPI();
+  renderChartTotal();
+  renderChartPerStudent();
+  renderChartStructure();
+  renderChartSources();
+  renderChartCoverage();
+  renderTable();
+  renderProfiles();
+}
+function rebuildCharts(){
+  renderChartTotal();
+  renderChartPerStudent();
+  renderChartStructure();
+  renderChartSources();
+  renderChartCoverage();
+}
+
+// ── CSV EXPORT ──
+document.getElementById("export-btn").addEventListener("click",()=>{
+  const rows=[["Школа","Фінансування (млн грн)","На учня (тис. грн)","Зарплата %","Комунальні %","Ремонт %","Розвиток %","Держ. частка %","Альт. частка %","Учні","Молодь у районі","Охоплення %"]];
+  SCHOOLS.forEach(s=>rows.push([
+    s.name,s.totalFunding,s.perStudent,
+    s.structure.salary,s.structure.utility,s.structure.repair,s.structure.develop,
+    s.govShare,s.altShare,s.students,s.youth,
+    (s.students/s.youth*100).toFixed(1)
+  ]));
+  const csv=rows.map(r=>r.join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);a.download="analytics-schools.csv";a.click();
+});
+
+// ── INIT ──
+renderAll();
+</script>
+</body>
+</html>
