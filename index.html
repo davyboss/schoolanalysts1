@@ -498,11 +498,11 @@ function getStructColors(){return isDark()?STRUCT_COLORS_DARK:STRUCT_COLORS_LIGH
 function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
 // ── HELPERS ──
-/** У таблиці суми в тис. грн; для екрана показуємо повні гривні без слова «тис.». */
-function fmtUahFromThousands(thousands){
-  const n=Number(thousands);
-  if(!isFinite(n)||isNaN(n))return "—";
-  return Math.round(n*1000).toLocaleString("uk-UA")+" грн";
+/** Формат суми з таблиці: число + «грн» (значення з Google — як у комірці, без множення). */
+function fmtUah(n){
+  const x=Number(n);
+  if(!isFinite(x)||isNaN(x))return "—";
+  return Math.round(x).toLocaleString("uk-UA")+" грн";
 }
 function filteredSchools(){
   if(activeSchool==="all")return SCHOOLS;
@@ -528,7 +528,7 @@ function renderKPI(){
   const totalStudents=fs.reduce((a,s)=>a+s.students,0);
 
   const kpis=[
-    {label:"Загальне фінансування",val:fmtUahFromThousands(totalF),sub:"сума по вибірці"},
+    {label:"Загальне фінансування",val:fmtUah(totalF),sub:"сума по вибірці"},
     {label:"Фінансування на учня",val:Math.round(avgPer).toLocaleString("uk")+" грн",sub:"середнє по вибірці"},
     {label:"Держ. частка (сер.)",val:avgGov.toFixed(0)+"%",sub:"оцінка: 100% − власні"},
     {label:"Власні доходи (сер.)",val:avgOwn.toFixed(0)+"%",sub:"частка від загального фінансування"},
@@ -565,7 +565,7 @@ function renderChartTotal(){
       labels:fs.map(s=>s.short),
       datasets:[{
         label:"грн",
-        data:fs.map(s=>s.totalFunding*1000),
+        data:fs.map(s=>s.totalFunding),
         backgroundColor:fs.map(s=>s.hex+"cc"),
         borderColor:fs.map(s=>s.hex),
         borderWidth:1.5,borderRadius:6,
@@ -732,11 +732,11 @@ function renderTable(){
     const share=s.totalFunding>0?(s.ownIncome/s.totalFunding*100).toFixed(1):"0";
     return`<tr>
       <td><div class="school-cell"><span class="dot" style="background:${s.hex}"></span><span class="school-name-cell">${s.name}</span></div></td>
-      <td>${fmtUahFromThousands(s.totalFunding)}</td>
+      <td>${fmtUah(s.totalFunding)}</td>
       <td>${Math.round(s.perStudent).toLocaleString("uk")} грн</td>
       <td>${s.students}</td>
       <td>${s.practiceBases}</td>
-      <td>${fmtUahFromThousands(s.ownIncome)}</td>
+      <td>${fmtUah(s.ownIncome)}</td>
       <td>${share}%</td>
       <td><span class="kpi-badge ${b.cls}">${b.txt}</span></td>
     </tr>`;
@@ -769,10 +769,10 @@ function renderProfiles(){
         <span class="kpi-badge ${b.cls}" style="margin-left:auto">${b.txt}</span>
       </div>
       <div class="profile-metrics">
-        <div class="metric-item"><div class="metric-label">Фінансування</div><div class="metric-val">${fmtUahFromThousands(s.totalFunding)}</div></div>
+        <div class="metric-item"><div class="metric-label">Фінансування</div><div class="metric-val">${fmtUah(s.totalFunding)}</div></div>
         <div class="metric-item"><div class="metric-label">На учня</div><div class="metric-val">${Math.round(s.perStudent).toLocaleString("uk")} грн</div></div>
         <div class="metric-item"><div class="metric-label">Учні / бази практики</div><div class="metric-val">${s.students} / ${s.practiceBases}</div></div>
-        <div class="metric-item"><div class="metric-label">Власні доходи</div><div class="metric-val">${fmtUahFromThousands(s.ownIncome)}</div></div>
+        <div class="metric-item"><div class="metric-label">Власні доходи</div><div class="metric-val">${fmtUah(s.ownIncome)}</div></div>
         <div class="metric-item"><div class="metric-label">Держ. частка (оц.)</div><div class="metric-val">${s.govShare}%</div></div>
         <div class="metric-item"><div class="metric-label">Частка власних</div><div class="metric-val">${s.altShare}%</div></div>
       </div>
@@ -806,9 +806,9 @@ function rebuildCharts(){
 document.getElementById("export-btn").addEventListener("click",()=>{
   const rows=[["Заклад","Фінансування (грн)","На учня (грн)","Гранти %","Спонсори %","Роботодавці %","Благодійність %","Держ. частка %","Власні %","Учні","Бази практики","Власні доходи (грн)"]];
   SCHOOLS.forEach(s=>rows.push([
-    s.name,s.totalFunding*1000,s.perStudent,
+    s.name,s.totalFunding,s.perStudent,
     s.structure.salary,s.structure.utility,s.structure.repair,s.structure.develop,
-    s.govShare,s.altShare,s.students,s.practiceBases,s.ownIncome*1000
+    s.govShare,s.altShare,s.students,s.practiceBases,s.ownIncome
   ]));
   const csv=rows.map(r=>r.join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
