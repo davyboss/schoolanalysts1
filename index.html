@@ -241,7 +241,7 @@ footer{text-align:center;padding:1.5rem;font-size:.75rem;color:var(--faint);bord
       <div class="chart-title">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18"/><rect x="14" y="8" width="7" height="13"/></svg>
         Загальне фінансування
-        <span class="badge">тис. грн</span>
+        <span class="badge">грн</span>
       </div>
       <div class="chart-wrap"><canvas id="chart-total"></canvas></div>
     </div>
@@ -498,6 +498,12 @@ function getStructColors(){return isDark()?STRUCT_COLORS_DARK:STRUCT_COLORS_LIGH
 function cssVar(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
 // ── HELPERS ──
+/** У таблиці суми в тис. грн; для екрана показуємо повні гривні без слова «тис.». */
+function fmtUahFromThousands(thousands){
+  const n=Number(thousands);
+  if(!isFinite(n)||isNaN(n))return "—";
+  return Math.round(n*1000).toLocaleString("uk-UA")+" грн";
+}
 function filteredSchools(){
   if(activeSchool==="all")return SCHOOLS;
   const i=+activeSchool;
@@ -522,7 +528,7 @@ function renderKPI(){
   const totalStudents=fs.reduce((a,s)=>a+s.students,0);
 
   const kpis=[
-    {label:"Загальне фінансування",val:totalF.toLocaleString("uk")+" тис. грн",sub:"сума по вибірці"},
+    {label:"Загальне фінансування",val:fmtUahFromThousands(totalF),sub:"сума по вибірці"},
     {label:"Фінансування на учня",val:Math.round(avgPer).toLocaleString("uk")+" грн",sub:"середнє по вибірці"},
     {label:"Держ. частка (сер.)",val:avgGov.toFixed(0)+"%",sub:"оцінка: 100% − власні"},
     {label:"Власні доходи (сер.)",val:avgOwn.toFixed(0)+"%",sub:"частка від загального фінансування"},
@@ -558,8 +564,8 @@ function renderChartTotal(){
     data:{
       labels:fs.map(s=>s.short),
       datasets:[{
-        label:"млн грн",
-        data:fs.map(s=>s.totalFunding),
+        label:"грн",
+        data:fs.map(s=>s.totalFunding*1000),
         backgroundColor:fs.map(s=>s.hex+"cc"),
         borderColor:fs.map(s=>s.hex),
         borderWidth:1.5,borderRadius:6,
@@ -567,13 +573,13 @@ function renderChartTotal(){
     },
     options:{
       responsive:true,maintainAspectRatio:true,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+Number(c.raw).toLocaleString("uk")+" тис. грн"}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+Number(c.raw).toLocaleString("uk-UA")+" грн"}}},
       scales:{
         x:{ticks:{color:opts.tickColor,font:{size:12}},grid:{display:false}},
-        y:{ticks:{color:opts.tickColor,font:{size:11}},
+        y:{ticks:{color:opts.tickColor,font:{size:11},callback:v=>Number(v).toLocaleString("uk-UA")},
            grid:{color:opts.gridColor},
            beginAtZero:true,
-           title:{display:true,text:"тис. грн",color:opts.color,font:{size:11}}}
+           title:{display:true,text:"грн",color:opts.color,font:{size:11}}}
       }
     }
   });
@@ -590,7 +596,7 @@ function renderChartPerStudent(){
     data:{
       labels:fs.map(s=>s.short),
       datasets:[{
-        label:"тис. грн",
+        label:"грн",
         data:fs.map(s=>s.perStudent),
         backgroundColor:fs.map(s=>s.hex+"cc"),
         borderColor:fs.map(s=>s.hex),
@@ -601,7 +607,7 @@ function renderChartPerStudent(){
     options:{
       indexAxis:"y",
       responsive:true,maintainAspectRatio:true,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+Number(c.raw).toLocaleString("uk")+" грн"}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>" "+Number(c.raw).toLocaleString("uk-UA")+" грн"}}},
       scales:{
         x:{ticks:{color:opts.tickColor,font:{size:11}},grid:{color:opts.gridColor},
            title:{display:true,text:"грн",color:opts.color,font:{size:11}}},
@@ -726,11 +732,11 @@ function renderTable(){
     const share=s.totalFunding>0?(s.ownIncome/s.totalFunding*100).toFixed(1):"0";
     return`<tr>
       <td><div class="school-cell"><span class="dot" style="background:${s.hex}"></span><span class="school-name-cell">${s.name}</span></div></td>
-      <td>${s.totalFunding.toLocaleString("uk")} тис. грн</td>
+      <td>${fmtUahFromThousands(s.totalFunding)}</td>
       <td>${Math.round(s.perStudent).toLocaleString("uk")} грн</td>
       <td>${s.students}</td>
       <td>${s.practiceBases}</td>
-      <td>${s.ownIncome.toLocaleString("uk")} тис. грн</td>
+      <td>${fmtUahFromThousands(s.ownIncome)}</td>
       <td>${share}%</td>
       <td><span class="kpi-badge ${b.cls}">${b.txt}</span></td>
     </tr>`;
@@ -763,10 +769,10 @@ function renderProfiles(){
         <span class="kpi-badge ${b.cls}" style="margin-left:auto">${b.txt}</span>
       </div>
       <div class="profile-metrics">
-        <div class="metric-item"><div class="metric-label">Фінансування</div><div class="metric-val">${s.totalFunding.toLocaleString("uk")} тис. грн</div></div>
+        <div class="metric-item"><div class="metric-label">Фінансування</div><div class="metric-val">${fmtUahFromThousands(s.totalFunding)}</div></div>
         <div class="metric-item"><div class="metric-label">На учня</div><div class="metric-val">${Math.round(s.perStudent).toLocaleString("uk")} грн</div></div>
         <div class="metric-item"><div class="metric-label">Учні / бази практики</div><div class="metric-val">${s.students} / ${s.practiceBases}</div></div>
-        <div class="metric-item"><div class="metric-label">Власні доходи</div><div class="metric-val">${s.ownIncome.toLocaleString("uk")} тис. грн</div></div>
+        <div class="metric-item"><div class="metric-label">Власні доходи</div><div class="metric-val">${fmtUahFromThousands(s.ownIncome)}</div></div>
         <div class="metric-item"><div class="metric-label">Держ. частка (оц.)</div><div class="metric-val">${s.govShare}%</div></div>
         <div class="metric-item"><div class="metric-label">Частка власних</div><div class="metric-val">${s.altShare}%</div></div>
       </div>
@@ -798,11 +804,11 @@ function rebuildCharts(){
 
 // ── CSV EXPORT ──
 document.getElementById("export-btn").addEventListener("click",()=>{
-  const rows=[["Заклад","Фінансування (тис. грн)","На учня (грн)","Гранти %","Спонсори %","Роботодавці %","Благодійність %","Держ. частка %","Власні %","Учні","Бази практики","Власні доходи (тис. грн)"]];
+  const rows=[["Заклад","Фінансування (грн)","На учня (грн)","Гранти %","Спонсори %","Роботодавці %","Благодійність %","Держ. частка %","Власні %","Учні","Бази практики","Власні доходи (грн)"]];
   SCHOOLS.forEach(s=>rows.push([
-    s.name,s.totalFunding,s.perStudent,
+    s.name,s.totalFunding*1000,s.perStudent,
     s.structure.salary,s.structure.utility,s.structure.repair,s.structure.develop,
-    s.govShare,s.altShare,s.students,s.practiceBases,s.ownIncome
+    s.govShare,s.altShare,s.students,s.practiceBases,s.ownIncome*1000
   ]));
   const csv=rows.map(r=>r.join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
