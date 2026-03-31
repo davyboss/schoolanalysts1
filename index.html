@@ -810,7 +810,8 @@ document.getElementById("export-btn").addEventListener("click",()=>{
     s.structure.salary,s.structure.utility,s.structure.repair,s.structure.develop,
     s.govShare,s.altShare,s.students,s.practiceBases,s.ownIncome
   ]));
-  const csv=rows.map(r=>r.join(",")).join("\n");
+  // UTF-8 BOM — щоб Excel у Windows відкривав кирилицю, а не «кракозябри»
+  const csv="\uFEFF"+rows.map(r=>r.join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);a.download="analytics-schools.csv";a.click();
